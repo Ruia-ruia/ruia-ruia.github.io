@@ -5,8 +5,18 @@
 
   <!-- Twitter cards -->
   <meta name="twitter:site"    content="@{{ site.twitter_username }}">
+  
+  {% if post.author %}
+  <meta name="twitter:creator" content="@{{ post.author }}">
+  {% else %}
   <meta name="twitter:creator" content="@{{ site.author }}">
+  {% endif %}
+
+  {% if post.title %}
+  <meta name="twitter:title"   content="{{ post.title }}">
+  {% else %}
   <meta name="twitter:title"   content="{{ site.title }}">
+  {% endif %}
 
   {% if post.summary %}
   <meta name="twitter:description" content="{{ post.summary }}">
