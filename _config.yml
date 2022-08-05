@@ -1,0 +1,22 @@
+title:              Computer security blog
+email:              jaydenkaiorivers@gmail.com
+description:        Writings on vulnerability research and exploitation
+author:             Awarau
+baseurl:            "/"
+url:                "https://ruia-ruia.github.io"
+
+# Social Profiles
+twitter_username:   Awarau1
+github_username:    ruia-ruia
+
+# Add your google-analytics ID here to activate google analytics
+google_analytics:   UA-XXXXXXXXX-X # out your google-analytics code
+
+# Build settings
+markdown:           kramdown
+paginate:           5
+paginate_path:      "/posts/page:num/"
+plugins:
+  - jekyll-feed
+  - jekyll-paginate
+  - jekyll-sitemap ## Uncomment this line to silently generate a sitemaps.org compliant sitemap for your Jekyll site
