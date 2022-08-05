@@ -1,4 +1,4 @@
-I"=(<h1 id="introduction">Introduction</h1>
+I"<'<h1 id="introduction">Introduction</h1>
 
 <p>This post covers an interesting vulnerability we (<a href="https://twitter.com/Awarau1">Jayden</a> and <a href="https://twitter.com/pqlqpql">David</a>) found in the <code class="language-plaintext highlighter-rouge">io_uring</code> subsystem of the Linux kernel.</p>
 
@@ -78,12 +78,9 @@ The exploit does not require unprivileged user namespaces and results in root pr
   <li><a href="#appendix" id="markdown-toc-appendix">Appendix</a>    <ul>
       <li><a href="#references" id="markdown-toc-references">References</a></li>
       <li><a href="#the-simplified-buddy-algorithm" id="markdown-toc-the-simplified-buddy-algorithm">The (simplified) buddy algorithm</a></li>
-      <li><a href="#why-pages" id="markdown-toc-why-pages">Why pages?</a>        <ul>
-          <li><a href="#paging-background" id="markdown-toc-paging-background">Paging: background</a></li>
-          <li><a href="#paging-motivation" id="markdown-toc-paging-motivation">Paging: motivation</a></li>
-          <li><a href="#paging-method" id="markdown-toc-paging-method">Paging: method</a></li>
-        </ul>
-      </li>
+      <li><a href="#paging-background" id="markdown-toc-paging-background">Paging: background</a></li>
+      <li><a href="#paging-motivation" id="markdown-toc-paging-motivation">Paging: motivation</a></li>
+      <li><a href="#paging-method" id="markdown-toc-paging-method">Paging: method</a></li>
     </ul>
   </li>
 </ul>
@@ -1159,14 +1156,12 @@ Assume at least <code class="language-plaintext highlighter-rouge">free_area[10]
 
 <p>For an interesting discussion on gaming the buddy allocator see <a href="https://etenal.me/archives/1825">this article</a> on page allocator Feng Shui.</p>
 
-<h2 id="why-pages">Why pages?</h2>
-<p>Modern computers are just really weird, we dunno what else to say!</p>
-<h3 id="paging-background">Paging: background</h3>
-<p>On a more serious note, pages are cool because they enable paging which enables <strong>address space virtualisation</strong>. With this, we abstract away from the complex details of physical memory management towards a more coherent, flexible, and secure memory layer.</p>
+<h2 id="paging-background">Paging: background</h2>
+<p>Pages are cool because they enable paging which enables <strong>address space virtualisation</strong>. With this, we abstract away from the complex details of physical memory management towards a more coherent, flexible, and secure memory layer.</p>
 
 <p>A virtual address space is comprised of <strong>virtual pages</strong>. These in turn map to <strong>physical page frames</strong> represented by the infamous <code class="language-plaintext highlighter-rouge">struct page</code>. When a process attempts to access memory, the computer must first translate the virtual access into the correct physical access. The virtual address, in combination with data gleaned from the paging data structures, specifies the underlying page frame and some offset into this page frame. In other words, the <strong>paging</strong> subsystem produces and resolves mappings between virtual addresses and physical addresses. There may be many virtual pages mapped to the same physical page frame.</p>
 
-<h3 id="paging-motivation">Paging: motivation</h3>
+<h2 id="paging-motivation">Paging: motivation</h2>
 <p>Paging has numerous advantages and use-cases.</p>
 <ul>
   <li>The paging system takes responsibity for address space management away from individual processes and instead makes the kernel deal with it. Each process believes that it has sole ownership over the system memory and so does not need to include explicit logic to protect itself from other processes or to ensure that it doesn’t trample on anybody else.</li>
@@ -1175,7 +1170,7 @@ Assume at least <code class="language-plaintext highlighter-rouge">free_area[10]
   <li>Paging enables the kernel to <strong>swap</strong> a page’s contents out to disk if we are running low on space and to swap it back in when we need it.</li>
 </ul>
 
-<h3 id="paging-method">Paging: method</h3>
+<h2 id="paging-method">Paging: method</h2>
 <p>To actually get at the physical memory, we need to combine a given virtual address with data retrieved from the paging data structures. These data structures are collectively called <strong>page tables</strong>. In most modern systems we use <strong>multi-level page tables</strong>.</p>
 
 <figure>
