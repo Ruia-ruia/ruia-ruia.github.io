@@ -21,7 +21,7 @@
   {% if post.summary %}
   <meta name="twitter:description" content="{{ post.summary }}">
   {% else %}
-  <meta name="twitter:description" content="This post covers an interesting vulnerability we (Jayden and David) found in the io_uring subsystem of the Linux kernel.">
+  <meta name="twitter:description" content="{{ post.summary }}">
   {% endif %}
 
   {% if post.image %}
