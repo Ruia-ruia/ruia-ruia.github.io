@@ -31,7 +31,7 @@
   <meta content="{{ site.url }}/about/" property="article:author">
   {% endif %}
   {% if page.image %}
-  <meta content="{{ page.image }}" property="og:image">
+  <meta content="{{site.url}}{{ page.image }}" property="og:image">
   <meta name="twitter:image" content="{{site.url}}{{ page.image }}">
   <meta name="twitter:card" content="summary_large_image">
   {% endif %}
