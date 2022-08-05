@@ -3,16 +3,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-  <!--
-  <meta property="og:image" content="/img/posts/cve-2022-29582/meta-caterpillar-even-more-hungry.jpg" />
-  <meta property="twitter:image" content="/img/posts/cve-2022-29582/meta-caterpillar-even-more-hungry.jpg" />
-  <meta property="twitter:description" content="/card_desc.html" />
-  -->
-
   <!-- Twitter cards -->
   <meta name="twitter:site"    content="@{{ site.twitter_username }}">
-  <meta name="twitter:creator" content="@{{ page.author }}">
-  <meta name="twitter:title"   content="{{ page.title }}">
+  <meta name="twitter:creator" content="@{{ post.author }}">
+  <meta name="twitter:title"   content="{{ post.title }}">
 
   {% if post.summary %}
   <meta name="twitter:description" content="{{ post.summary }}">
