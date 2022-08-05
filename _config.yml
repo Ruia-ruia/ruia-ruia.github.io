@@ -12,6 +12,8 @@ github_username:    ruia-ruia
 # Add your google-analytics ID here to activate google analytics
 google_analytics:   UA-XXXXXXXXX-X # out your google-analytics code
 
+title_image: '/img/posts/cve-2022-29582/meta-caterpillar-even-more-hungry.jpg'
+
 # Build settings
 markdown:           kramdown
 paginate:           5
