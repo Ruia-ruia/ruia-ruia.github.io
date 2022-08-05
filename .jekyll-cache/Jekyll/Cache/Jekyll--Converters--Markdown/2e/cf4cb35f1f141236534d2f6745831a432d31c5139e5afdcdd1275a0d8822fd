@@ -1,4 +1,4 @@
-I"�)<h1 id="introduction">Introduction</h1>
+I"=(<h1 id="introduction">Introduction</h1>
 
 <p>This post covers an interesting vulnerability we (<a href="https://twitter.com/Awarau1">Jayden</a> and <a href="https://twitter.com/pqlqpql">David</a>) found in the <code class="language-plaintext highlighter-rouge">io_uring</code> subsystem of the Linux kernel.</p>
 
@@ -8,96 +8,87 @@ The exploit does not require unprivileged user namespaces and results in root pr
 <p>We were awarded a generous bounty through <a href="https://security.googleblog.com/2022/02/roses-are-red-violets-are-blue-giving.html">Google’s kCTF vulnerability research program</a>.</p>
 
 <h1 id="table-of-contents">Table of contents</h1>
-<ul>
-  <li><a href="#introduction">Introduction</a></li>
-  <li><a href="#io_uring">io_uring</a>
-    <ul>
-      <li><a href="#kernel-submission">Kernel submission</a>
-        <ul>
-          <li><a href="#terminology">Terminology</a></li>
+
+<hr />
+
+<ul id="markdown-toc">
+  <li><a href="#introduction" id="markdown-toc-introduction">Introduction</a></li>
+  <li><a href="#table-of-contents" id="markdown-toc-table-of-contents">Table of contents</a></li>
+  <li><a href="#io_uring" id="markdown-toc-io_uring">io_uring</a>    <ul>
+      <li><a href="#kernel-submission" id="markdown-toc-kernel-submission">Kernel submission</a>        <ul>
+          <li><a href="#terminology" id="markdown-toc-terminology">Terminology</a></li>
         </ul>
       </li>
-      <li><a href="#specification">Specification</a>
-        <ul>
-          <li><a href="#linked-sqes">Linked SQEs</a></li>
-          <li><a href="#timeout-operations-ioring_op_timeout">Timeout operations: IORING_OP_TIMEOUT</a></li>
-          <li><a href="#timeout-operations-ioring_op_link_timeout">Timeout operations: IORING_OP_LINK_TIMEOUT</a></li>
-          <li><a href="#ioring_op_tee-requests">IORING_OP_TEE requests</a></li>
+      <li><a href="#specification" id="markdown-toc-specification">Specification</a>        <ul>
+          <li><a href="#linked-sqes" id="markdown-toc-linked-sqes">Linked SQEs</a></li>
+          <li><a href="#timeout-operations-ioring_op_timeout" id="markdown-toc-timeout-operations-ioring_op_timeout">Timeout operations: IORING_OP_TIMEOUT</a></li>
+          <li><a href="#timeout-operations-ioring_op_link_timeout" id="markdown-toc-timeout-operations-ioring_op_link_timeout">Timeout operations: IORING_OP_LINK_TIMEOUT</a></li>
+          <li><a href="#ioring_op_tee-requests" id="markdown-toc-ioring_op_tee-requests">IORING_OP_TEE requests</a></li>
         </ul>
       </li>
-      <li><a href="#combining-a-timeout-and-a-link-timeout">Combining a timeout and a link timeout</a></li>
+      <li><a href="#combining-a-timeout-and-a-link-timeout" id="markdown-toc-combining-a-timeout-and-a-link-timeout">Combining a timeout and a link timeout</a></li>
     </ul>
   </li>
-  <li><a href="#examining-the-edge-case">Examining the edge case</a>
-    <ul>
-      <li><a href="#analysis-linking-of-t-and-lt">Analysis: linking of <code class="language-plaintext highlighter-rouge">T</code> and <code class="language-plaintext highlighter-rouge">LT</code></a></li>
-      <li><a href="#analysis-completion-of-t-through-flushing">Analysis: Completion of <code class="language-plaintext highlighter-rouge">T</code> through flushing</a></li>
-      <li><a href="#analysis-completion-of-lt-through-timer-firing">Analysis: Completion of <code class="language-plaintext highlighter-rouge">LT</code> through timer firing</a></li>
-      <li><a href="#analysis-concurrent-completion-of-t-and-lt">Analysis: Concurrent completion of <code class="language-plaintext highlighter-rouge">T</code> and <code class="language-plaintext highlighter-rouge">LT</code></a></li>
-      <li><a href="#racing-the-deferred-workers">Racing the deferred workers</a></li>
+  <li><a href="#examining-the-edge-case" id="markdown-toc-examining-the-edge-case">Examining the edge case</a>    <ul>
+      <li><a href="#analysis-linking-of-t-and-lt" id="markdown-toc-analysis-linking-of-t-and-lt">Analysis: linking of <code class="language-plaintext highlighter-rouge">T</code> and <code class="language-plaintext highlighter-rouge">LT</code></a></li>
+      <li><a href="#analysis-completion-of-t-through-flushing" id="markdown-toc-analysis-completion-of-t-through-flushing">Analysis: Completion of <code class="language-plaintext highlighter-rouge">T</code> through flushing</a></li>
+      <li><a href="#analysis-completion-of-lt-through-timer-firing" id="markdown-toc-analysis-completion-of-lt-through-timer-firing">Analysis: Completion of <code class="language-plaintext highlighter-rouge">LT</code> through timer firing</a></li>
+      <li><a href="#analysis-concurrent-completion-of-t-and-lt" id="markdown-toc-analysis-concurrent-completion-of-t-and-lt">Analysis: Concurrent completion of <code class="language-plaintext highlighter-rouge">T</code> and <code class="language-plaintext highlighter-rouge">LT</code></a></li>
+      <li><a href="#racing-the-deferred-workers" id="markdown-toc-racing-the-deferred-workers">Racing the deferred workers</a></li>
     </ul>
   </li>
-  <li><a href="#exploitation">Exploitation</a>
-    <ul>
-      <li><a href="#replacing-lt">Replacing <code class="language-plaintext highlighter-rouge">LT</code></a></li>
-      <li><a href="#releasing-refs-on-lt">Releasing refs on <code class="language-plaintext highlighter-rouge">LT'</code></a></li>
-      <li><a href="#cleaning-up-lt">Cleaning up <code class="language-plaintext highlighter-rouge">LT'</code></a></li>
-      <li><a href="#releasing-the-final-file-ref">Releasing the final <code class="language-plaintext highlighter-rouge">file</code> ref</a></li>
-      <li><a href="#crossing-the-cache-boundary">Crossing the cache boundary</a>
-        <ul>
-          <li><a href="#slab-caches">Slab caches</a></li>
-          <li><a href="#the-memory-hierarchy">The memory hierarchy</a></li>
-          <li><a href="#page-use-after-free">Page use-after-free</a>
-            <ul>
-              <li><a href="#how-do-we-allocate-a-new-page">How do we allocate a new page?</a></li>
-              <li><a href="#how-to-free-a-page">How to free a page?</a></li>
+  <li><a href="#exploitation" id="markdown-toc-exploitation">Exploitation</a>    <ul>
+      <li><a href="#replacing-lt" id="markdown-toc-replacing-lt">Replacing <code class="language-plaintext highlighter-rouge">LT</code></a></li>
+      <li><a href="#releasing-refs-on-lt" id="markdown-toc-releasing-refs-on-lt">Releasing refs on <code class="language-plaintext highlighter-rouge">LT'</code></a></li>
+      <li><a href="#cleaning-up-lt" id="markdown-toc-cleaning-up-lt">Cleaning up <code class="language-plaintext highlighter-rouge">LT'</code></a></li>
+      <li><a href="#releasing-the-final-file-ref" id="markdown-toc-releasing-the-final-file-ref">Releasing the final <code class="language-plaintext highlighter-rouge">file</code> ref</a></li>
+      <li><a href="#crossing-the-cache-boundary" id="markdown-toc-crossing-the-cache-boundary">Crossing the cache boundary</a>        <ul>
+          <li><a href="#slab-caches" id="markdown-toc-slab-caches">Slab caches</a></li>
+          <li><a href="#the-memory-hierarchy" id="markdown-toc-the-memory-hierarchy">The memory hierarchy</a></li>
+          <li><a href="#page-use-after-free" id="markdown-toc-page-use-after-free">Page use-after-free</a>            <ul>
+              <li><a href="#how-do-we-allocate-a-new-page" id="markdown-toc-how-do-we-allocate-a-new-page">How do we allocate a new page?</a></li>
+              <li><a href="#how-to-free-a-page" id="markdown-toc-how-to-free-a-page">How to free a page?</a></li>
             </ul>
           </li>
-          <li><a href="#method">Method</a></li>
-          <li><a href="#page-reallocation">Page reallocation</a>
-            <ul>
-              <li><a href="#the-buddy-allocator">The buddy allocator</a></li>
+          <li><a href="#method" id="markdown-toc-method">Method</a></li>
+          <li><a href="#page-reallocation" id="markdown-toc-page-reallocation">Page reallocation</a>            <ul>
+              <li><a href="#the-buddy-allocator" id="markdown-toc-the-buddy-allocator">The buddy allocator</a></li>
             </ul>
           </li>
         </ul>
       </li>
-      <li><a href="#reallocating-as-msg_msgseg">Reallocating as <code class="language-plaintext highlighter-rouge">msg_msgseg</code></a>
-        <ul>
-          <li><a href="#msg_msgseg-use-after-free"><code class="language-plaintext highlighter-rouge">msg_msgseg</code> use-after-free</a>
-            <ul>
-              <li><a href="#freeing-the-file">Freeing the file</a></li>
+      <li><a href="#reallocating-as-msg_msgseg" id="markdown-toc-reallocating-as-msg_msgseg">Reallocating as <code class="language-plaintext highlighter-rouge">msg_msgseg</code></a>        <ul>
+          <li><a href="#msg_msgseg-use-after-free" id="markdown-toc-msg_msgseg-use-after-free"><code class="language-plaintext highlighter-rouge">msg_msgseg</code> use-after-free</a>            <ul>
+              <li><a href="#freeing-the-file" id="markdown-toc-freeing-the-file">Freeing the file</a></li>
             </ul>
           </li>
         </ul>
       </li>
-      <li><a href="#tls-who-tls_context">TLS who? <code class="language-plaintext highlighter-rouge">tls_context</code></a>
-        <ul>
-          <li><a href="#reallocating-as-tls_context">Reallocating as <code class="language-plaintext highlighter-rouge">tls_context</code></a></li>
-          <li><a href="#leaking-tls_context">Leaking <code class="language-plaintext highlighter-rouge">tls_context</code></a></li>
-          <li><a href="#overwriting-tls_context">Overwriting <code class="language-plaintext highlighter-rouge">tls_context</code></a></li>
+      <li><a href="#tls-who-tls_context" id="markdown-toc-tls-who-tls_context">TLS who? <code class="language-plaintext highlighter-rouge">tls_context</code></a>        <ul>
+          <li><a href="#reallocating-as-tls_context" id="markdown-toc-reallocating-as-tls_context">Reallocating as <code class="language-plaintext highlighter-rouge">tls_context</code></a></li>
+          <li><a href="#leaking-tls_context" id="markdown-toc-leaking-tls_context">Leaking <code class="language-plaintext highlighter-rouge">tls_context</code></a></li>
+          <li><a href="#overwriting-tls_context" id="markdown-toc-overwriting-tls_context">Overwriting <code class="language-plaintext highlighter-rouge">tls_context</code></a></li>
         </ul>
       </li>
-      <li><a href="#code-execution">Code execution</a></li>
+      <li><a href="#code-execution" id="markdown-toc-code-execution">Code execution</a></li>
     </ul>
   </li>
-  <li><a href="#the-fix">The fix</a></li>
-  <li><a href="#mitigations-against-exploitation">Mitigations against exploitation</a></li>
-  <li><a href="#preemptive-faqs">Preemptive FAQs</a></li>
-  <li><a href="#appendix">Appendix</a>
-    <ul>
-      <li><a href="#references">References</a></li>
-      <li><a href="#the-simplified-buddy-algorithm">The (simplified) buddy algorithm</a></li>
-      <li><a href="#memory-whose-addresses-are-constant">Memory whose addresses are constant</a></li>
-      <li><a href="#why-pages">Why pages?</a>
-        <ul>
-          <li><a href="#paging-background">Paging: background</a></li>
-          <li><a href="#paging-motivation">Paging: motivation</a></li>
-          <li><a href="#paging-method">Paging: method</a></li>
+  <li><a href="#the-fix" id="markdown-toc-the-fix">The fix</a></li>
+  <li><a href="#mitigations-against-exploitation" id="markdown-toc-mitigations-against-exploitation">Mitigations against exploitation</a></li>
+  <li><a href="#appendix" id="markdown-toc-appendix">Appendix</a>    <ul>
+      <li><a href="#references" id="markdown-toc-references">References</a></li>
+      <li><a href="#the-simplified-buddy-algorithm" id="markdown-toc-the-simplified-buddy-algorithm">The (simplified) buddy algorithm</a></li>
+      <li><a href="#why-pages" id="markdown-toc-why-pages">Why pages?</a>        <ul>
+          <li><a href="#paging-background" id="markdown-toc-paging-background">Paging: background</a></li>
+          <li><a href="#paging-motivation" id="markdown-toc-paging-motivation">Paging: motivation</a></li>
+          <li><a href="#paging-method" id="markdown-toc-paging-method">Paging: method</a></li>
         </ul>
       </li>
     </ul>
   </li>
 </ul>
+
+<hr />
 
 <h1 id="io_uring">io_uring</h1>
 
@@ -1108,15 +1099,6 @@ uid=0(root) gid=0(root) groups=0(root)
 
 <hr />
 
-<h1 id="preemptive-faqs">Preemptive FAQs</h1>
-<ol>
-  <li><em>Why did you perform cross-cache from the <code class="language-plaintext highlighter-rouge">struct file</code> cache? Why not just do it from <code class="language-plaintext highlighter-rouge">io_kiocb</code>?</em> The short answer is that <code class="language-plaintext highlighter-rouge">io_kiocb</code> has too many annoying fields which led to kernel crashes. There’s no long answer.</li>
-  <li><em>Were there really no other avenues to attack? It seems like there’s a lot of general cache objects in use by each <code class="language-plaintext highlighter-rouge">io_kiocb</code>, aren’t they good targets?</em> We couldn’t find any. The main problem was that the destruction of these other general cache objects (e.g. <code class="language-plaintext highlighter-rouge">io_buffer</code> or <code class="language-plaintext highlighter-rouge">async_data</code>) are tied directly to the full destruction of their encapsulating <code class="language-plaintext highlighter-rouge">io_kiocb</code>. This means that we trigger our old pal <strong>refcount saturation</strong> due to the 0 <code class="language-plaintext highlighter-rouge">io_kiocb</code> refcount, before we’re even given a chance to enter the appropriate destruction path. The <code class="language-plaintext highlighter-rouge">sp-&gt;file_in</code> refcount is decremented immediately when we unblock. But if there’s a simpler way, then there’s a better way. So please let us know if you figure something out :).</li>
-  <li><em>If you could gain a file Use-After-Free, why not mount a file permissions attack?</em> We did go with this originally – we attempted to swap out a read-only file handle (on <code class="language-plaintext highlighter-rouge">/etc/passwd</code>) for one allowing us to write. But in the KCTF environment you need to breach the NSJAIL directly or in our case with a memory corruption bug, launching a ROP chain to abolish the prison-industrial complex.</li>
-</ol>
-
-<hr />
-
 <h1 id="appendix">Appendix</h1>
 
 <h2 id="references">References</h2>
@@ -1166,7 +1148,7 @@ Assume at least <code class="language-plaintext highlighter-rouge">free_area[10]
       <li>Split <code class="language-plaintext highlighter-rouge">B</code> in half: <code class="language-plaintext highlighter-rouge">B1</code> and <code class="language-plaintext highlighter-rouge">B2</code>.</li>
       <li><code class="language-plaintext highlighter-rouge">B1</code> goes on the <code class="language-plaintext highlighter-rouge">k - 1</code>th list.</li>
       <li><code class="language-plaintext highlighter-rouge">B2</code> is our candidate block.</li>
-      <li>Set <code class="language-plaintext highlighter-rouge">B</code> to <code class="language-plaintext highlighter-rouge">B_2</code>.</li>
+      <li>Set <code class="language-plaintext highlighter-rouge">B</code> to <code class="language-plaintext highlighter-rouge">B2</code>.</li>
       <li>Set <code class="language-plaintext highlighter-rouge">k</code> to <code class="language-plaintext highlighter-rouge">k - 1</code></li>
       <li>goto 5.</li>
     </ul>
@@ -1176,9 +1158,6 @@ Assume at least <code class="language-plaintext highlighter-rouge">free_area[10]
 <p>Note that when we can’t find a suitable object on the list for our given <code class="language-plaintext highlighter-rouge">order</code>, we attempt to find one by splitting an item from the <code class="language-plaintext highlighter-rouge">order + 1</code> list into two halves. These halves are called “buddies”. This tells us where the algorithm got its name. But more importantly, it has a bearing on the inverse operation. When both buddies are freed back to the page allocator, they are coalesced and moved up to the <code class="language-plaintext highlighter-rouge">order + 1</code> list, recursively. While one is allocated, however, the other remains in the <code class="language-plaintext highlighter-rouge">order</code> list, waiting for its buddy so they can one day return to the <code class="language-plaintext highlighter-rouge">order + 1</code>, then maybe to <code class="language-plaintext highlighter-rouge">order + 2</code>, <code class="language-plaintext highlighter-rouge">order + 3</code>, and so on.</p>
 
 <p>For an interesting discussion on gaming the buddy allocator see <a href="https://etenal.me/archives/1825">this article</a> on page allocator Feng Shui.</p>
-
-<h2 id="memory-whose-addresses-are-constant">Memory whose addresses are constant</h2>
-<p>We have to find these <a href="https://0xax.gitbooks.io/linux-insides/content/MM/linux-mm-2.html">things</a></p>
 
 <h2 id="why-pages">Why pages?</h2>
 <p>Modern computers are just really weird, we dunno what else to say!</p>
