@@ -1,4 +1,4 @@
-I"<'<h1 id="introduction">Introduction</h1>
+I"�*<h1 id="introduction">Introduction</h1>
 
 <p>This post covers an interesting vulnerability we (<a href="https://twitter.com/Awarau1">Jayden</a> and <a href="https://twitter.com/pqlqpql">David</a>) found in the <code class="language-plaintext highlighter-rouge">io_uring</code> subsystem of the Linux kernel.</p>
 
@@ -74,7 +74,8 @@ The exploit does not require unprivileged user namespaces and results in root pr
     </ul>
   </li>
   <li><a href="#the-fix" id="markdown-toc-the-fix">The fix</a></li>
-  <li><a href="#mitigations-against-exploitation" id="markdown-toc-mitigations-against-exploitation">Mitigations against exploitation</a></li>
+  <li><a href="#affected-versions-and-remediation" id="markdown-toc-affected-versions-and-remediation">Affected versions and remediation</a></li>
+  <li><a href="#conclusion" id="markdown-toc-conclusion">Conclusion</a></li>
   <li><a href="#appendix" id="markdown-toc-appendix">Appendix</a>    <ul>
       <li><a href="#references" id="markdown-toc-references">References</a></li>
       <li><a href="#the-simplified-buddy-algorithm" id="markdown-toc-the-simplified-buddy-algorithm">The (simplified) buddy algorithm</a></li>
@@ -852,7 +853,7 @@ That’s crazy! Another one? Why?!</p>
  * This address and its contents are invariant across boots. */</span>
 <span class="cp">#define NULL_MEM (0xfffffe0000002000)
 </span></code></pre></div></div>
-<p>In spite of KASLR and heap offset randomisation we found an address which satisfies our requirement across all executions of the target kernel (see appendix for more information).</p>
+<p>In spite of KASLR and heap offset randomisation we used a known <a href="https://0xax.gitbooks.io/linux-insides/content/MM/linux-mm-2.html">fixed address</a> which satisfies our requirement across all executions of the target kernel.</p>
 
 <div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">static</span> <span class="kr">inline</span> <span class="kt">void</span> <span class="nf">set_file_spray_data</span><span class="p">(</span><span class="k">struct</span> <span class="n">manager</span><span class="o">*</span> <span class="n">mgr</span><span class="p">)</span>
 <span class="p">{</span>
@@ -1070,7 +1071,7 @@ uid=0(root) gid=0(root) groups=0(root)
 <hr />
 
 <h1 id="the-fix">The fix</h1>
-<p>The main component of the fix is below:</p>
+<p>The main component of the fix from commit <code class="language-plaintext highlighter-rouge">e677edbcabee849bfdd43f1602bccbecf736a646</code> is below:</p>
 <div class="language-diff highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">@@ -6282,12 +6281,12 @@</span> static enum hrtimer_restart io_link_timeout_fn(struct hrtimer *timer)
         if (!list_empty(&amp;req-&gt;link_list)) {
                 prev = list_entry(req-&gt;link_list.prev, struct io_kiocb,
@@ -1088,11 +1089,20 @@ uid=0(root) gid=0(root) groups=0(root)
 
         if (prev) {
 </code></pre></div></div>
+<p>The fix ensures that we remove <code class="language-plaintext highlighter-rouge">LT</code> from <code class="language-plaintext highlighter-rouge">link_list</code>. This prevents <code class="language-plaintext highlighter-rouge">T</code> from holding a stale reference to <code class="language-plaintext highlighter-rouge">LT</code> if they complete concurrently.</p>
 
 <hr />
 
-<h1 id="mitigations-against-exploitation">Mitigations against exploitation</h1>
-<p>Immediately launch a full-scale <a href="https://dune.fandom.com/wiki/Butlerian_Jihad">Butlerian Jihad</a> against anything stronger than a deterministic finite automaton. Failing this, update your kernel.</p>
+<h1 id="affected-versions-and-remediation">Affected versions and remediation</h1>
+
+<p>Mainline versions from v5.10 up until v5.12 are vulnerable. For -longterm versions, 5.10.109 patched this bug.</p>
+
+<hr />
+
+<h1 id="conclusion">Conclusion</h1>
+<p>Wow, that was a wild ride! This is probably the hardest vulnerability that we’ve ever written an exploit for, so we’re happy that it worked out. At times, it did feel like an impossible task :p</p>
+
+<p>We hope you enjoyed the writeup! The following part of the article contains some appendices for those interested. Catch you next time :)</p>
 
 <hr />
 
