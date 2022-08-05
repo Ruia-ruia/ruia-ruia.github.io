@@ -3,61 +3,56 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-
   <meta content="{{ site.title }}" property="og:site_name">
 
   <meta name="twitter:site"    content="@Awarau1">
   <meta name="twitter:creator" content="Awarau and pql">
-  <meta name="twitter:title"   content="{{ post.title }}">
+  <meta name="twitter:title"   content="{{ page.title }}">
 
-  {% if post.title %}
-  <meta content="{{ post.title }}" property="og:title">
+  {% if page.title %}
+  <meta content="{{ page.title }}" property="og:title">
   {% else %}
   <meta content="{{ site.title }}" property="og:title">
   {% endif %}
-  {% if post.title %}
-  <meta content="article" property="og:type">
-  {% else %}
-  <meta content="website" property="og:type">
-  {% endif %}
-  {% if post.summary %}
-  <meta content="{{ post.summary}}" property="og:description">
-  {% else if post.description %}
-  <meta content="{{ post.description}}" property="og:description">
+
+  {% if page.summary %}
+  <meta content="{{ page.summary}}" property="og:description">
+  {% else if page.description %}
+  <meta content="{{ page.description}}" property="og:description">
   {% else %}
   <meta content="{{ site.description }}" property="og:description">
   {% endif %}
-  {% if post.url %}
-  <meta content="{{ site.url }}{{ post.url }}" property="og:url">
+
+  {% if page.url %}
+  <meta content="{{ site.url }}{{ page.url }}" property="og:url">
   {% endif %}
-  {% if post.date %}
-  <meta content="{{ post.date | date_to_xmlschema }}" property="article:published_time">
+  {% if page.date %}
+  <meta content="{{ page.date | date_to_xmlschema }}" property="article:published_time">
   <meta content="{{ site.url }}/about/" property="article:author">
   {% endif %}
-  {% if post.image %}
-  <meta content="{{ post.image }}" property="og:image">
-  <meta name="twitter:image" content="{{ post.image }}">
+  {% if page.image %}
+  <meta content="{{ page.image }}" property="og:image">
+  <meta name="twitter:image" content="{{ page.image }}">
   <meta name="twitter:card" content="summary_large_image">
   {% endif %}
 
 
-  {% if post.summary %}
-  <meta name="twitter:description" content="{{ post.summary }}">
+  {% if page.summary %}
+  <meta name="twitter:description" content="{{ page.summary }}">
   {% else %}
   <meta name="twitter:description" content="{{ site.description }}">
   {% endif %}
 
-  {% if post.categories %}
-  {% for category in post.categories limit:1 %}
+  {% if page.categories %}
+  {% for category in page.categories limit:1 %}
   <meta content="{{ category }}" property="article:section">
   {% endfor %}
   {% endif %}
-  {% if post.tags %}
-  {% for tag in post.tags %}
+  {% if page.tags %}
+  {% for tag in page.tags %}
   <meta content="{{ tag }}" property="article:tag">
   {% endfor %}
   {% endif %}
-
 
 
 
